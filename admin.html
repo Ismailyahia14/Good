@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الأسئلة</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-cog"></i> لوحة تحكم المشرف</h1>
+            <a href="index.html" class="btn-secondary">
+                <i class="fas fa-arrow-right"></i> العودة للاختبار
+            </a>
+        </header>
+
+        <div class="admin-panel">
+            <div class="form-section">
+                <h2><i class="fas fa-plus-circle"></i> إضافة سؤال جديد</h2>
+                <form id="questionForm">
+                    <div class="form-group">
+                        <label>نص السؤال:</label>
+                        <textarea id="questionText" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>نوع السؤال:</label>
+                        <select id="questionType" required>
+                            <option value="multiple_choice">اختيار من متعدد</option>
+                            <option value="true_false">صح/خطأ</option>
+                        </select>
+                    </div>
+                    
+                    <div id="optionsContainer">
+                        <!-- سيتم إضافة خيارات الديناميكية هنا -->
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الإجابة الصحيحة:</label>
+                        <input type="text" id="correctAnswer" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>التصنيف:</label>
+                            <input type="text" id="questionCategory" value="عام">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>الصعوبة:</label>
+                            <select id="questionDifficulty">
+                                <option value="سهل">سهل</option>
+                                <option value="متوسط">متوسط</option>
+                                <option value="صعب">صعب</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-success">
+                        <i class="fas fa-save"></i> حفظ السؤال
+                    </button>
+                </form>
+            </div>
+
+            <div class="questions-list">
+                <h2><i class="fas fa-list"></i> الأسئلة الحالية</h2>
+                <div id="questionsList">
+                    <!-- سيتم عرض الأسئلة هنا -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
