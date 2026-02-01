@@ -1,269 +1,373 @@
-// حالة التطبيق
-let currentState = {
-    currentQuestionIndex: 0,
-    userAnswers: {},
-    score: 0,
-    questions: [],
-    theme: localStorage.getItem('theme') || 'light'
-};
+// ============ المتغيرات العامة ============
+let userAnswers = {};
+let score = 0;
+let totalQuestions = 43; // عدد الأسئلة الكلي
 
-// تهيئة التطبيق
+// ============ تهيئة الموقع ============
 document.addEventListener('DOMContentLoaded', function() {
-    initTheme();
-    loadQuestions();
+    initializeQuiz();
     setupEventListeners();
 });
 
-// تحميل الأسئلة من ملف JSON
-async function loadQuestions() {
-    try {
-        const response = await fetch('questions.json');
-        const data = await response.json();
-        currentState.questions = data.questions;
-        
-        updateStats();
-        displayQuestion();
-    } catch (error) {
-        console.error('Error loading questions:', error);
-        document.getElementById('questionContainer').innerHTML = 
-            '<p>❌ حدث خطأ في تحميل الأسئلة. يرجى المحاولة لاحقاً.</p>';
-    }
+function initializeQuiz() {
+    // تخزين الإجابات الصحيحة (يمكن تحميلها من ملف JSON)
+    window.correctAnswers = {
+        1: 1, 2: 4, 3: 1, 4: 1, 5: 4, 6: 4, 7: 3, 8: 1, 9: 2, 10: 2,
+        11: 4, 12: 4, 13: 3, 14: 2, 15: 1, 16: 1, 17: 2, 18: 4, 19: 1, 20: 4,
+        21: 2, 22: 4, 23: 4, 24: 4, 25: 4, 26: 2, 27: 4, 28: 2, 29: 3, 30: 2,
+        31: 4, 32: 3, 33: 3, 34: 1, 35: 2, 36: 2, 37: 4, 38: 1, 39: 3, 40: 4,
+        41: 3, 42: 3, 43: 4
+    };
+
+    // تهيئة كائن الإجابات
+    userAnswers = {};
+    score = 0;
+    updateProgressBar();
 }
 
-// عرض السؤال الحالي
-function displayQuestion() {
-    const question = currentState.questions[currentState.currentQuestionIndex];
-    const questionContainer = document.getElementById('questionContainer');
+function setupEventListeners() {
+    // زر تبديل الوضع الليلي
+    document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
     
-    let optionsHTML = '';
+    // زر عرض النتيجة النهائية
+    document.getElementById('showResults').addEventListener('click', showFinalResults);
     
-    if (question.type === 'multiple_choice') {
-        question.options.forEach((option, index) => {
-            const isSelected = currentState.userAnswers[question.id] === option;
-            optionsHTML += `
-                <div class="option ${isSelected ? 'selected' : ''}" 
-                     data-value="${option}"
-                     onclick="selectAnswer(${question.id}, '${option}')">
-                    ${String.fromCharCode(65 + index)}. ${option}
-                </div>
-            `;
+    // زر إعادة المحاولة
+    document.getElementById('restartQuiz').addEventListener('click', restartQuiz);
+    
+    // زر مقارنة الإجابات
+    document.getElementById('compareAnswers').addEventListener('click', compareAllAnswers);
+    
+    // متابعة تغيير الإجابات
+    document.querySelectorAll('input[type="radio"]').forEach(input => {
+        input.addEventListener('change', function() {
+            const questionId = this.name.replace('q', '');
+            const answerValue = this.value;
+            userAnswers[questionId] = parseInt(answerValue);
+            updateProgressBar();
         });
-    } else if (question.type === 'true_false') {
-        optionsHTML = `
-            <div class="option ${currentState.userAnswers[question.id] === 'صح' ? 'selected' : ''}" 
-                 data-value="صح"
-                 onclick="selectAnswer(${question.id}, 'صح')">
-                صح
-            </div>
-            <div class="option ${currentState.userAnswers[question.id] === 'خطأ' ? 'selected' : ''}" 
-                 data-value="خطأ"
-                 onclick="selectAnswer(${question.id}, 'خطأ')">
-                خطأ
-            </div>
-        `;
+    });
+}
+
+// ============ وظيفة التحقق من إجابة واحدة ============
+function checkSingleAnswer(button) {
+    const questionCard = button.closest('.question-card');
+    const questionId = questionCard.dataset.questionId;
+    const selectedOption = questionCard.querySelector('input:checked');
+    const resultDiv = questionCard.querySelector('.result');
+    
+    if (!selectedOption) {
+        resultDiv.innerHTML = '<span style="color: orange;">⚠️ الرجاء اختيار إجابة</span>';
+        resultDiv.classList.remove('hidden');
+        return;
     }
     
-    questionContainer.innerHTML = `
-        <div class="question-card">
-            <h3>${question.question}</h3>
-            <div class="category-badge">${question.category} - ${question.difficulty}</div>
-            <div class="options-container">
-                ${optionsHTML}
+    const answerValue = parseInt(selectedOption.value);
+    userAnswers[questionId] = answerValue;
+    
+    // التحقق من الإجابة
+    const isCorrect = (answerValue === correctAnswers[questionId]);
+    
+    // تلوين الإجابات
+    const options = questionCard.querySelectorAll('.option');
+    options.forEach(option => {
+        const optionValue = parseInt(option.querySelector('input').value);
+        option.classList.remove('correct', 'wrong');
+        
+        if (optionValue === correctAnswers[questionId]) {
+            option.classList.add('correct');
+        } else if (optionValue === answerValue && !isCorrect) {
+            option.classList.add('wrong');
+        }
+    });
+    
+    // عرض النتيجة
+    if (isCorrect) {
+        resultDiv.innerHTML = '<span style="color: var(--correct-color);">✅ إجابة صحيحة</span>';
+        if (!questionCard.classList.contains('answered-correctly')) {
+            score++;
+            questionCard.classList.add('answered-correctly');
+        }
+    } else {
+        resultDiv.innerHTML = '<span style="color: var(--wrong-color);">❌ إجابة خاطئة</span>';
+    }
+    
+    resultDiv.classList.remove('hidden');
+    updateProgressBar();
+    updateScore();
+}
+
+// ============ عرض النتيجة النهائية ============
+function showFinalResults() {
+    // حساب الدرجة
+    let calculatedScore = 0;
+    const total = Object.keys(correctAnswers).length;
+    
+    Object.keys(userAnswers).forEach(qId => {
+        if (userAnswers[qId] === correctAnswers[qId]) {
+            calculatedScore++;
+        }
+    });
+    
+    score = calculatedScore;
+    
+    // إنشاء رسالة النتيجة
+    const percentage = Math.round((score / total) * 100);
+    let message = '';
+    let emoji = '';
+    
+    if (percentage >= 90) {
+        message = 'ممتاز! نتيجة رائعة';
+        emoji = '🎉';
+    } else if (percentage >= 70) {
+        message = 'جيد جداً';
+        emoji = '👍';
+    } else if (percentage >= 50) {
+        message = 'مقبول، يمكنك التحسين';
+        emoji = '📚';
+    } else {
+        message = 'يحتاج إلى مراجعة';
+        emoji = '🔍';
+    }
+    
+    // عرض النتيجة في مودال
+    const resultsHTML = `
+        <div class="results-modal">
+            <div class="results-content">
+                <h3>النتيجة النهائية ${emoji}</h3>
+                <div class="score-circle">
+                    <div class="score-number">${score}/${total}</div>
+                    <div class="score-percentage">${percentage}%</div>
+                </div>
+                <p class="result-message">${message}</p>
+                
+                <div class="detailed-results">
+                    <h4>تفاصيل النتيجة:</h4>
+                    <div class="result-stats">
+                        <div class="stat correct-stat">
+                            <span class="stat-label">الإجابات الصحيحة:</span>
+                            <span class="stat-value">${score}</span>
+                        </div>
+                        <div class="stat wrong-stat">
+                            <span class="stat-label">الإجابات الخاطئة:</span>
+                            <span class="stat-value">${total - score}</span>
+                        </div>
+                        <div class="stat unanswered-stat">
+                            <span class="stat-label">الأسئلة غير المجابة:</span>
+                            <span class="stat-value">${total - Object.keys(userAnswers).length}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="results-buttons">
+                    <button id="closeResults" class="btn">إغلاق</button>
+                    <button id="compareAll" class="btn">مقارنة جميع الإجابات</button>
+                </div>
             </div>
         </div>
     `;
     
-    updateControls();
-}
-
-// اختيار إجابة
-function selectAnswer(questionId, answer) {
-    currentState.userAnswers[questionId] = answer;
-    displayQuestion();
-}
-
-// تحديث أزرار التحكم
-function updateControls() {
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
+    // إضافة المودال للصفحة
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = resultsHTML;
+    document.body.appendChild(modalContainer);
     
-    prevBtn.disabled = currentState.currentQuestionIndex === 0;
-    nextBtn.disabled = currentState.currentQuestionIndex === currentState.questions.length - 1;
-    submitBtn.style.display = currentState.currentQuestionIndex === currentState.questions.length - 1 ? 
-        'flex' : 'none';
-}
-
-// تحديث الإحصائيات
-function updateStats() {
-    document.getElementById('currentQuestion').textContent = currentState.currentQuestionIndex + 1;
-    document.getElementById('totalQuestions').textContent = currentState.questions.length;
-    document.getElementById('score').textContent = currentState.score;
-}
-
-// التالي
-document.getElementById('nextBtn').addEventListener('click', function() {
-    if (currentState.currentQuestionIndex < currentState.questions.length - 1) {
-        currentState.currentQuestionIndex++;
-        displayQuestion();
-        updateStats();
-    }
-});
-
-// السابق
-document.getElementById('prevBtn').addEventListener('click', function() {
-    if (currentState.currentQuestionIndex > 0) {
-        currentState.currentQuestionIndex--;
-        displayQuestion();
-        updateStats();
-    }
-});
-
-// تصحيح الإجابات
-document.getElementById('submitBtn').addEventListener('click', function() {
-    calculateScore();
-    showResults();
-});
-
-// حساب النتيجة
-function calculateScore() {
-    currentState.score = 0;
+    // إضافة أحداث للأزرار داخل المودال
+    document.getElementById('closeResults').addEventListener('click', () => {
+        modalContainer.remove();
+    });
     
-    currentState.questions.forEach(question => {
-        const userAnswer = currentState.userAnswers[question.id];
-        if (userAnswer && userAnswer === question.answer) {
-            currentState.score++;
-        }
+    document.getElementById('compareAll').addEventListener('click', () => {
+        modalContainer.remove();
+        compareAllAnswers();
     });
 }
 
-// عرض النتائج
-function showResults() {
-    const resultsContainer = document.getElementById('results');
-    const quizContainer = document.querySelector('.quiz-container');
-    const finalScore = document.getElementById('finalScore');
-    const totalScore = document.getElementById('totalScore');
-    const resultMessage = document.getElementById('resultMessage');
+// ============ مقارنة جميع الإجابات ============
+function compareAllAnswers() {
+    // إنشاء صفحة مقارنة
+    const comparisonHTML = `
+        <div class="comparison-page">
+            <div class="comparison-header">
+                <h2>📊 مقارنة الإجابات</h2>
+                <button id="backToQuiz" class="btn">العودة للاختبار</button>
+            </div>
+            
+            <div class="comparison-summary">
+                <h3>ملخص النتائج</h3>
+                <div class="summary-grid">
+                    ${generateComparisonSummary()}
+                </div>
+            </div>
+            
+            <div class="detailed-comparison">
+                <h3>تفاصيل الإجابات</h3>
+                <div class="comparison-table-container">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>رقم السؤال</th>
+                                <th>إجابتك</th>
+                                <th>الإجابة الصحيحة</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateComparisonRows()}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
     
-    finalScore.textContent = currentState.score;
-    totalScore.textContent = currentState.questions.length;
+    // إخفاء الأسئلة وإظهار المقارنة
+    document.getElementById('quizContainer').classList.add('hidden');
+    document.getElementById('comparisonContainer').innerHTML = comparisonHTML;
+    document.getElementById('comparisonContainer').classList.remove('hidden');
     
-    // رسالة النتيجة
-    const percentage = (currentState.score / currentState.questions.length) * 100;
-    if (percentage >= 80) {
-        resultMessage.textContent = "ممتاز! لديك معرفة رائعة 🎉";
-        resultMessage.style.color = "#28a745";
-    } else if (percentage >= 60) {
-        resultMessage.textContent = "جيد جداً! يمكنك التحسين 🌟";
-        resultMessage.style.color = "#17a2b8";
-    } else if (percentage >= 40) {
-        resultMessage.textContent = "مقبول، استمر في التعلم 📚";
-        resultMessage.style.color = "#ffc107";
-    } else {
-        resultMessage.textContent = "يحتاج إلى تحسين، لا تستسلم 💪";
-        resultMessage.style.color = "#dc3545";
-    }
-    
-    quizContainer.style.display = 'none';
-    resultsContainer.style.display = 'block';
+    // زر العودة
+    document.getElementById('backToQuiz').addEventListener('click', () => {
+        document.getElementById('comparisonContainer').classList.add('hidden');
+        document.getElementById('quizContainer').classList.remove('hidden');
+    });
 }
 
-// إعادة الاختبار
-document.getElementById('restartBtn').addEventListener('click', function() {
-    currentState.currentQuestionIndex = 0;
-    currentState.userAnswers = {};
-    currentState.score = 0;
+function generateComparisonSummary() {
+    let correctCount = 0;
+    let wrongCount = 0;
+    let unanswered = 0;
     
-    document.querySelector('.quiz-container').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
+    Object.keys(correctAnswers).forEach(qId => {
+        if (userAnswers[qId]) {
+            if (userAnswers[qId] === correctAnswers[qId]) {
+                correctCount++;
+            } else {
+                wrongCount++;
+            }
+        } else {
+            unanswered++;
+        }
+    });
     
-    updateStats();
-    displayQuestion();
-});
-
-// عرض الإجابات الصحيحة
-document.getElementById('showAnswers').addEventListener('click', function() {
-    const questionContainer = document.getElementById('questionContainer');
-    document.querySelector('.quiz-container').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-    
-    let answersHTML = '<h2><i class="fas fa-check-circle"></i> الإجابات الصحيحة</h2>';
-    
-    currentState.questions.forEach((question, index) => {
-        const userAnswer = currentState.userAnswers[question.id];
-        const isCorrect = userAnswer === question.answer;
-        
-        answersHTML += `
-            <div class="question-card ${isCorrect ? 'correct-answer' : 'wrong-answer'}">
-                <h3>سؤال ${index + 1}: ${question.question}</h3>
-                <p><strong>إجابتك:</strong> ${userAnswer || 'لم تجب'}</p>
-                <p><strong>الإجابة الصحيحة:</strong> ${question.answer}</p>
-                <p class="${isCorrect ? 'text-success' : 'text-danger'}">
-                    ${isCorrect ? '✓ صحيح' : '✗ خطأ'}
-                </p>
+    return `
+        <div class="summary-item correct">
+            <div class="summary-icon">✅</div>
+            <div class="summary-text">
+                <div class="summary-count">${correctCount}</div>
+                <div class="summary-label">صحيحة</div>
             </div>
+        </div>
+        <div class="summary-item wrong">
+            <div class="summary-icon">❌</div>
+            <div class="summary-text">
+                <div class="summary-count">${wrongCount}</div>
+                <div class="summary-label">خاطئة</div>
+            </div>
+        </div>
+        <div class="summary-item unanswered">
+            <div class="summary-icon">❓</div>
+            <div class="summary-text">
+                <div class="summary-count">${unanswered}</div>
+                <div class="summary-label">غير مجابة</div>
+            </div>
+        </div>
+    `;
+}
+
+function generateComparisonRows() {
+    let rows = '';
+    
+    Object.keys(correctAnswers).forEach(qId => {
+        const userAnswer = userAnswers[qId];
+        const correctAnswer = correctAnswers[qId];
+        const isCorrect = userAnswer === correctAnswer;
+        const isAnswered = userAnswer !== undefined;
+        
+        let userAnswerText = isAnswered ? `الخيار ${userAnswer}` : 'لم تتم الإجابة';
+        let correctAnswerText = `الخيار ${correctAnswer}`;
+        let status = isAnswered ? (isCorrect ? '✅ صحيحة' : '❌ خاطئة') : '⚠️ غير مجابة';
+        let rowClass = isAnswered ? (isCorrect ? 'correct-row' : 'wrong-row') : 'unanswered-row';
+        
+        rows += `
+            <tr class="${rowClass}">
+                <td>${qId}</td>
+                <td>${userAnswerText}</td>
+                <td>${correctAnswerText}</td>
+                <td>${status}</td>
+            </tr>
         `;
     });
     
-    questionContainer.innerHTML = answersHTML;
-    
-    // أزرار إضافية
-    const controls = document.querySelector('.controls');
-    controls.innerHTML = `
-        <button onclick="location.reload()" class="btn-primary">
-            <i class="fas fa-home"></i> العودة للبداية
-        </button>
-        <button onclick="restartQuiz()" class="btn-warning">
-            <i class="fas fa-redo"></i> إعادة الاختبار
-        </button>
-    `;
-});
+    return rows;
+}
 
-// إعادة الاختبار من البداية
+// ============ إعادة المحاولة ============
 function restartQuiz() {
-    currentState.currentQuestionIndex = 0;
-    currentState.userAnswers = {};
-    currentState.score = 0;
-    
-    loadQuestions();
-    document.querySelector('.quiz-container').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-}
-
-// إعداد الوضع الليلي
-function initTheme() {
-    if (currentState.theme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        document.getElementById('themeToggle').innerHTML = 
-            '<i class="fas fa-sun"></i> وضع نهاري';
+    if (confirm('هل تريد إعادة الاختبار؟ سيتم مسح جميع إجاباتك.')) {
+        // مسح جميع الإجابات
+        document.querySelectorAll('input[type="radio"]').forEach(input => {
+            input.checked = false;
+        });
+        
+        // مسح نتائج الأسئلة
+        document.querySelectorAll('.question-card').forEach(card => {
+            card.classList.remove('answered-correctly');
+            card.querySelectorAll('.option').forEach(option => {
+                option.classList.remove('correct', 'wrong');
+            });
+            card.querySelector('.result').classList.add('hidden');
+        });
+        
+        // إعادة التعيين
+        userAnswers = {};
+        score = 0;
+        updateProgressBar();
+        updateScore();
+        
+        // إذا كان في صفحة المقارنة، العودة للأسئلة
+        document.getElementById('comparisonContainer').classList.add('hidden');
+        document.getElementById('quizContainer').classList.remove('hidden');
+        
+        // التمرير للأعلى
+        window.scrollTo(0, 0);
     }
-    
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 }
 
-// تبديل الوضع الليلي
-function toggleTheme() {
-    const themeToggle = document.getElementById('themeToggle');
+// ============ تحديث شريط التقدم ============
+function updateProgressBar() {
+    const answered = Object.keys(userAnswers).length;
+    const progressPercentage = (answered / totalQuestions) * 100;
     
-    if (currentState.theme === 'light') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        currentState.theme = 'dark';
+    const progressBar = document.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.style.width = `${progressPercentage}%`;
+        progressBar.textContent = `${answered}/${totalQuestions}`;
+    }
+}
+
+function updateScore() {
+    const scoreElement = document.getElementById('currentScore');
+    if (scoreElement) {
+        scoreElement.textContent = score;
+    }
+}
+
+// ============ تبديل الوضع الليلي ============
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const icon = document.querySelector('#darkModeToggle i');
+    const button = document.querySelector('#darkModeToggle');
+    
+    if (document.body.classList.contains('dark-mode')) {
+        icon.className = 'fas fa-sun';
+        button.innerHTML = '<i class="fas fa-sun"></i> الوضع النهاري';
         localStorage.setItem('theme', 'dark');
-        themeToggle.innerHTML = '<i class="fas fa-sun"></i> وضع نهاري';
     } else {
-        document.documentElement.removeAttribute('data-theme');
-        currentState.theme = 'light';
+        icon.className = 'fas fa-moon';
+        button.innerHTML = '<i class="fas fa-moon"></i> الوضع الليلي';
         localStorage.setItem('theme', 'light');
-        themeToggle.innerHTML = '<i class="fas fa-moon"></i> وضع ليلي';
     }
 }
 
-// إعداد مستمعي الأحداث
-function setupEventListeners() {
-    // تحديث الأسئلة عند التغيير في قاعدة البيانات
-    window.addEventListener('storage', function(e) {
-        if (e.key === 'questions_updated') {
-            loadQuestions();
-        }
-    });
-}
+                
