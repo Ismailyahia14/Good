@@ -3,85 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أسئلة تفاعلية</title>
-    <link rel="stylesheet" href="style.css">
+    <title>اختبار الصراع مع العدو الإسرائيلي</title>
+    <!-- Font Awesome للأيقونات -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- خط عربي -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- شريط التحكم العلوي -->
+    <div class="header-controls">
+        <button id="darkModeToggle" class="btn">
+            <i class="fas fa-moon"></i> الوضع الليلي
+        </button>
+        
+        <div class="score-display">
+            <span>الدرجة: </span>
+            <span id="currentScore">0</span>
+        </div>
+    </div>
+
+    <!-- الحاوية الرئيسية -->
     <div class="container">
-        <!-- زر الوضع الليلي -->
-        <div class="theme-toggle">
-            <button id="themeToggle">
-                <i class="fas fa-moon"></i> وضع ليلي
-            </button>
+        <!-- العنوان الرئيسي -->
+        <div class="quiz-header">
+            <h1><i class="fas fa-graduation-cap"></i> امتحان الصراع مع العدو الإسرائيلي</h1>
+            <p class="subtitle">المستوى الأول - 50 درجة - أمة الرحيم علي عبدالله الصنعاني</p>
         </div>
 
-        <!-- رأس الموقع -->
-        <header>
-            <h1><i class="fas fa-brain"></i> اختبار المعرفة</h1>
-            <p>اختبر معلوماتك مع أسئلة تفاعلية متنوعة</p>
-        </header>
-
-        <!-- إحصائيات -->
-        <div class="stats">
-            <div class="stat-card">
-                <span id="currentQuestion">0</span>
-                <p>سؤال حالي</p>
+        <!-- شريط التقدم -->
+        <div class="progress-container">
+            <div class="progress-info">
+                <span>التقدم: <span id="answeredCount">0</span> من <span id="totalQuestions">43</span> سؤال</span>
             </div>
-            <div class="stat-card">
-                <span id="totalQuestions">0</span>
-                <p>إجمالي الأسئلة</p>
-            </div>
-            <div class="stat-card">
-                <span id="score">0</span>
-                <p>النتيجة</p>
+            <div class="progress">
+                <div class="progress-bar" style="width: 0%">0/43</div>
             </div>
         </div>
 
         <!-- حاوية الأسئلة -->
-        <div class="quiz-container">
-            <div id="questionContainer">
-                <!-- سيتم تحميل الأسئلة هنا -->
+        <div id="quizContainer">
+            <!-- سيتم إضافة الأسئلة هنا -->
+            <!-- مثال لسؤال واحد -->
+            <div class="question-card" data-question-id="1">
+                <h3>1) مسؤوليتنا اليوم تجاه العدو الإسرائيلي</h3>
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="q1" value="1">
+                        <span class="option-text">إحياء حالة العداء له</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="q1" value="2">
+                        <span class="option-text">الولاء له</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="q1" value="3">
+                        <span class="option-text">مسح النظرة العدائية له</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="q1" value="4">
+                        <span class="option-text">التطبيع معه</span>
+                    </label>
+                </div>
+                <button class="btn check-btn" onclick="checkSingleAnswer(this)">
+                    <i class="fas fa-check"></i> تحقق من الإجابة
+                </button>
+                <div class="result hidden"></div>
             </div>
             
-            <!-- أزرار التحكم -->
-            <div class="controls">
-                <button id="prevBtn" class="btn-secondary">
-                    <i class="fas fa-arrow-right"></i> السابق
-                </button>
-                <button id="nextBtn" class="btn-primary">
-                    التالي <i class="fas fa-arrow-left"></i>
-                </button>
-                <button id="submitBtn" class="btn-success">
-                    <i class="fas fa-paper-plane"></i> تصحيح الإجابات
-                </button>
-                <button id="restartBtn" class="btn-warning">
-                    <i class="fas fa-redo"></i> إعادة الاختبار
-                </button>
-            </div>
+            <!-- باقي الأسئلة بنفس النمط -->
         </div>
 
-        <!-- النتائج -->
-        <div id="results" class="results-container" style="display: none;">
-            <h2><i class="fas fa-chart-line"></i> النتائج</h2>
-            <div class="result-card">
-                <h3 id="finalScore">0</h3>
-                <p>من إجمالي <span id="totalScore">0</span> سؤال</p>
-                <p id="resultMessage"></p>
-            </div>
-            <button id="showAnswers" class="btn-info">
-                <i class="fas fa-eye"></i> عرض الإجابات الصحيحة
-            </button>
-        </div>
-
-        <!-- روابط -->
-        <footer>
-            <a href="admin.html" class="admin-link">
-                <i class="fas fa-cog"></i> إدارة الأسئلة (للمشرف)
-            </a>
-        </footer>
+        <!-- حاوية المقارنة (مخفية في البداية) -->
+        <div id="comparisonContainer" class="hidden"></div>
     </div>
 
+    <!-- أزرار التحكم السفلية -->
+    <div class="buttons-container">
+        <button id="showResults" class="btn btn-success">
+            <i class="fas fa-chart-bar"></i> عرض النتيجة النهائية
+        </button>
+        
+        <button id="compareAnswers" class="btn btn-primary">
+            <i class="fas fa-exchange-alt"></i> مقارنة الإجابات
+        </button>
+        
+        <button id="restartQuiz" class="btn btn-warning">
+            <i class="fas fa-redo"></i> إعادة المحاولة
+        </button>
+    </div>
+
+    <!-- JavaScript -->
     <script src="script.js"></script>
 </body>
-</html>
+            </html>
